@@ -3,13 +3,13 @@ services:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_DB: aquabase
-      POSTGRES_USER: ${DB_USER:-aquabase}
+      POSTGRES_DB: aqua_log
+      POSTGRES_USER: ${DB_USER:-aqua_log}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-changeme}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-aquabase}"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-aqua_log}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -21,7 +21,7 @@ services:
       db:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql://${DB_USER:-aquabase}:${DB_PASSWORD:-changeme}@db/aquabase
+      DATABASE_URL: postgresql://${DB_USER:-aqua_log}:${DB_PASSWORD:-changeme}@db/aqua_log
       SPECIES_DATA_PATH: /app/species-data
     volumes:
       - ./species-data:/app/species-data

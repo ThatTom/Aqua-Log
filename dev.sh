@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 #
-# dev.sh — quick rebuild/redeploy for AquaBase during local development
+# dev.sh — quick rebuild/redeploy for Aqua Log during local development
 #
-# Save this file ANYWHERE outside the aquabase/ project folder
-# (e.g. one level up, next to the aquabase/ directory) and run it
+# Save this file ANYWHERE outside the aqua-log/ project folder
+# (e.g. one level up, next to the aqua-log/ directory) and run it
 # from there. It assumes the project lives in a sibling or child
-# folder called "aquabase" — override with --dir if not.
+# folder called "aqua-log" — override with --dir if not.
 #
 # Usage:
 #   ./dev.sh              # rebuild + restart everything (most common)
@@ -18,11 +18,11 @@
 #   ./dev.sh shell backend       # open a shell in a running container
 #   ./dev.sh psql                 # open a psql shell on the db
 #   ./dev.sh reset                 # nuke everything incl. the db volume
-#   ./dev.sh --dir ../my-aquabase backend   # point at a different folder
+#   ./dev.sh --dir ../my-aqua-log backend   # point at a different folder
 #
 set -euo pipefail
 
-PROJECT_DIR="aquabase"
+PROJECT_DIR="aqua-log"
 ACTION="${1:-all}"
 shift || true
 
@@ -43,8 +43,8 @@ done
 
 if [[ ! -f "$PROJECT_DIR/docker-compose.yml" ]]; then
   echo "Could not find $PROJECT_DIR/docker-compose.yml"
-  echo "Run this script from the folder containing your aquabase/ project,"
-  echo "or pass --dir /path/to/aquabase"
+  echo "Run this script from the folder containing your aqua-log/ project,"
+  echo "or pass --dir /path/to/aqua-log"
   exit 1
 fi
 

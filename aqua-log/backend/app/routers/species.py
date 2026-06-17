@@ -159,7 +159,7 @@ async def upload_species_from_url(body: UrlImportBody):
         url = url.replace("github.com", "raw.githubusercontent.com").replace("/blob/", "/")
 
     try:
-        req = urllib.request.Request(url, headers={"User-Agent": "AquaLog/1.0"})
+        req = urllib.request.Request(url, headers={"User-Agent": "Aqua Log/0.5.0"})
         with urllib.request.urlopen(req, timeout=10) as response:
             contents = response.read()
     except urllib.error.HTTPError as e:

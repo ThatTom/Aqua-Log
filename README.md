@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="aquabase/frontend/public/favicon.svg" width="80" alt="Aqua Log logo" />
+  <img src="aqua-log/frontend/public/favicon.svg" width="80" alt="Aqua Log logo" />
 </p>
 
 <h1 align="center">Aqua Log</h1>
@@ -27,7 +27,7 @@
 |---|---|
 | **Dashboard** | Overview of all tanks with live parameter readings, alerts, and upcoming tasks |
 | **Tank detail** | Per-tank view with livestock, plants, water parameters, maintenance schedule, daily tasks, and alerts |
-| **Species browser** | Searchable catalogue of fish, invertebrates, amphibians, and plants with care data |
+| **Species** | Searchable catalogue of fish, invertebrates, amphibians, and plants with care data; add and edit entries via the built-in form |
 | **Compatibility checker** | Build a stocklist and instantly see conflicts, temperament warnings, and water parameter overlaps |
 | **Livestock journal** | Per-tank event log — observations, illness, treatments, births, deaths, and more |
 | **Tank designer** | Grid-based layout tool for planning scape and hardscape placement |
@@ -41,7 +41,7 @@
 
 ```bash
 # 1. Enter the application directory
-cd aquabase
+cd aqua-log
 
 # 2. Copy the example env file and set your database credentials
 cp .env.example .env
@@ -76,11 +76,11 @@ The backend applies all database migrations automatically on startup.
 
 **Backend:**
 ```bash
-cd aquabase/backend
+cd aqua-log/backend
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 
-export DATABASE_URL=postgresql://aquabase:changeme@localhost/aquabase
+export DATABASE_URL=postgresql://aqua_log:changeme@localhost/aqua_log
 export SPECIES_DATA_PATH=../species-data
 
 alembic upgrade head
@@ -89,7 +89,7 @@ uvicorn app.main:app --reload
 
 **Frontend:**
 ```bash
-cd aquabase/frontend
+cd aqua-log/frontend
 npm install
 npm run dev    # http://localhost:5173
 ```
@@ -98,7 +98,7 @@ npm run dev    # http://localhost:5173
 
 ## Species data
 
-Species data lives in YAML files under `aquabase/species-data/` and is kept as a **local copy only** — it is not tracked in git. The backend loads all YAML files on startup recursively, so the directory structure is flexible.
+Species data lives in YAML files under `aqua-log/species-data/` and is kept as a **local copy only** — it is not tracked in git. The backend loads all YAML files on startup recursively, so the directory structure is flexible.
 
 ### Directory layout
 
@@ -140,12 +140,12 @@ Alembic manages all schema changes. **Never** drop and recreate tables on a data
 ### Making a schema change
 
 ```bash
-# 1. Edit aquabase/backend/app/models/models.py
+# 1. Edit aqua-log/backend/app/models/models.py
 
 # 2. Generate a migration
 ./dev.sh migrate "describe what changed"
 
-# 3. Review the generated file in aquabase/backend/alembic/versions/
+# 3. Review the generated file in aqua-log/backend/alembic/versions/
 
 # 4. Apply it
 ./dev.sh upgrade
@@ -154,14 +154,14 @@ Alembic manages all schema changes. **Never** drop and recreate tables on a data
 ### Rolling back one step
 
 ```bash
-docker compose -f aquabase/docker-compose.yml exec backend alembic downgrade -1
+docker compose -f aqua-log/docker-compose.yml exec backend alembic downgrade -1
 ```
 
 ### Checking state
 
 ```bash
-docker compose -f aquabase/docker-compose.yml exec backend alembic current
-docker compose -f aquabase/docker-compose.yml exec backend alembic history
+docker compose -f aqua-log/docker-compose.yml exec backend alembic current
+docker compose -f aqua-log/docker-compose.yml exec backend alembic history
 ```
 
 > **Rule:** never edit a migration file after it has been applied anywhere. Write a new one instead, even for a typo. Commit migration files in the same commit as the model change.
@@ -182,7 +182,7 @@ The **Settings** page includes a Data backup section:
 ```
 Aqua-Log/
 ├── dev.sh                         # Development helper script
-└── aquabase/
+└── aqua-log/
     ├── docker-compose.yml
     ├── .env.example
     ├── backend/

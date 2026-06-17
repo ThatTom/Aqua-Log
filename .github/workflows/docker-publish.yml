@@ -21,9 +21,9 @@ jobs:
       matrix:
         include:
           - service: backend
-            context: aquabase/backend
+            context: aqua-log/backend
           - service: frontend
-            context: aquabase/frontend
+            context: aqua-log/frontend
 
     steps:
       - name: Checkout
