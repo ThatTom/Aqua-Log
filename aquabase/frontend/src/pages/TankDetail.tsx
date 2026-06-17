@@ -195,6 +195,212 @@ function CompatibilityCheck({ tankId, slug }: { tankId: string; slug: string }) 
   )
 }
 
+// --- Aquarium graphic ---
+function TankGraphic({ fishCount, plantCount, co2 }: { fishCount: number; plantCount: number; co2: boolean }) {
+  const W = 480, H = 134
+  const GR = 10
+  const WT = 6
+  const SY = 104
+  const BY = 128
+  const FISH_MIN_Y = WT + 12, FISH_MAX_Y = SY - 16
+  const FISH_MIN_X = 20,      FISH_MAX_X = W - 20
+
+  const numFish   = Math.min(fishCount, 6)
+  const numPlants = plantCount > 0 ? Math.min(plantCount, 4) : 0
+
+  const fishDefs = useMemo(() => ([
+    { homeX: 175, homeY: 53, s: 1.00, offsetX:   0, offsetY:   0 },
+    { homeX: 296, homeY: 40, s: 0.78, offsetX:  22, offsetY: -12 },
+    { homeX: 118, homeY: 74, s: 0.88, offsetX: -26, offsetY:   6 },
+    { homeX: 362, homeY: 63, s: 0.72, offsetX:  32, offsetY:  12 },
+    { homeX: 244, homeY: 82, s: 0.82, offsetX: -16, offsetY:  16 },
+    { homeX: 72,  homeY: 48, s: 0.70, offsetX: -38, offsetY:  -6 },
+  ] as const).slice(0, numFish), [numFish])
+
+  // Animation refs — mutated every frame without triggering re-renders
+  const svgRef    = useRef<SVGSVGElement>(null)
+  const feedRef   = useRef({ active: false, x: 0, y: 0 })
+  const feedTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const animRef   = useRef<{ x: number; y: number; vx: number; vy: number; dir: number }[]>([])
+  const groupRefs = useRef<(SVGGElement | null)[]>([])
+  const rafRef    = useRef(0)
+  const [foodDrop, setFoodDrop] = useState<{ x: number; y: number; key: number } | null>(null)
+
+  useEffect(() => {
+    animRef.current = fishDefs.map(f => ({ x: f.homeX, y: f.homeY, vx: 0, vy: 0, dir: 1 }))
+  }, [fishDefs])
+
+  // Click to feed — fish rush to click point for 2.5 s then resume wandering
+  useEffect(() => {
+    const svg = svgRef.current
+    if (!svg) return
+    const onClick = (e: MouseEvent) => {
+      const r = svg.getBoundingClientRect()
+      const x = (e.clientX - r.left) * (W / r.width)
+      const y = (e.clientY - r.top)  * (H / r.height)
+      feedRef.current = { active: true, x, y }
+      setFoodDrop({ x, y, key: Date.now() })
+      if (feedTimer.current) clearTimeout(feedTimer.current)
+      feedTimer.current = setTimeout(() => {
+        feedRef.current = { ...feedRef.current, active: false }
+        setFoodDrop(null)
+      }, 2500)
+    }
+    svg.addEventListener('click', onClick)
+    return () => {
+      svg.removeEventListener('click', onClick)
+      if (feedTimer.current) clearTimeout(feedTimer.current)
+    }
+  }, [])
+
+  // Animation loop — runs at 60 fps, writes directly to DOM
+  useEffect(() => {
+    if (numFish === 0) return
+    const FOLLOW_LAG = [0.045, 0.032, 0.038, 0.027, 0.034, 0.029]
+    const WANDER_LAG = 0.012
+
+    const tick = (ts: number) => {
+      const t = ts / 1000
+      animRef.current.forEach((f, i) => {
+        const def = fishDefs[i]
+        const { active, x: fx, y: fy } = feedRef.current
+        let targetX: number, targetY: number, lag: number
+        if (active) {
+          targetX = Math.max(FISH_MIN_X, Math.min(FISH_MAX_X, fx + def.offsetX))
+          targetY = Math.max(FISH_MIN_Y, Math.min(FISH_MAX_Y, fy + def.offsetY))
+          lag = FOLLOW_LAG[i]
+        } else {
+          // Each fish drifts on its own independent sine-wave path
+          const freq  = 0.22 + i * 0.04
+          const phase = i * (Math.PI * 2 / 6)
+          targetX = Math.max(FISH_MIN_X, Math.min(FISH_MAX_X, def.homeX + Math.sin(t * freq + phase) * 44))
+          targetY = Math.max(FISH_MIN_Y, Math.min(FISH_MAX_Y, def.homeY + Math.cos(t * freq * 0.65 + phase + 1.3) * 10))
+          lag = WANDER_LAG
+        }
+        f.vx = (targetX - f.x) * lag
+        f.vy = (targetY - f.y) * lag
+        f.x += f.vx
+        f.y += f.vy
+        if (Math.abs(f.vx) > 0.06) f.dir = f.vx > 0 ? 1 : -1
+
+        const el = groupRefs.current[i]
+        if (el) {
+          const bw = 34 * def.s
+          el.setAttribute('transform', f.dir === 1
+            ? `translate(${f.x - bw / 2}, ${f.y})`
+            : `translate(${f.x + bw / 2}, ${f.y}) scale(-1, 1)`)
+        }
+      })
+      rafRef.current = requestAnimationFrame(tick)
+    }
+    rafRef.current = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(rafRef.current)
+  }, [fishDefs, numFish])
+
+  const plantXs = [44, 422, 152, 332].slice(0, numPlants)
+
+  const bubbleSrc = [
+    { x: 44,  r: 2.5, dur: 3.2, delay: 0.0, drift:  3 },
+    { x: 47,  r: 2.0, dur: 2.7, delay: 1.1, drift: -2 },
+    { x: 41,  r: 1.5, dur: 2.3, delay: 2.3, drift:  2 },
+    { x: 422, r: 2.5, dur: 3.0, delay: 0.5, drift: -3 },
+    { x: 426, r: 2.0, dur: 2.6, delay: 1.6, drift:  2 },
+    { x: 420, r: 1.5, dur: 2.2, delay: 2.7, drift: -2 },
+    { x: 204, r: 2.0, dur: 2.9, delay: 0.8, drift:  2 },
+    { x: 208, r: 1.5, dur: 2.5, delay: 1.9, drift: -2 },
+    { x: 332, r: 2.0, dur: 3.1, delay: 0.3, drift: -2 },
+    { x: 337, r: 1.5, dur: 2.6, delay: 1.4, drift:  2 },
+    { x: 152, r: 2.0, dur: 2.8, delay: 0.7, drift:  2 },
+    { x: 157, r: 1.5, dur: 2.4, delay: 1.8, drift: -2 },
+    { x: 290, r: 2.0, dur: 3.0, delay: 0.2, drift: -2 },
+    { x: 110, r: 1.5, dur: 2.5, delay: 1.3, drift:  2 },
+  ]
+  const bubbles = bubbleSrc.slice(0, co2 ? 14 : Math.min(3 + numFish + numPlants, 10))
+
+  return (
+    <svg
+      ref={svgRef}
+      viewBox={`0 0 ${W} ${H}`}
+      style={{ width: '100%', height: 'auto', display: 'block', borderRadius: GR, cursor: 'pointer' }}
+      preserveAspectRatio="xMidYMid meet"
+    >
+      {/* Water body */}
+      <rect x={2} y={WT} width={W - 4} height={BY - WT} fill="var(--blue-bg)" rx={GR - 1} />
+
+      {/* Light shafts */}
+      <polygon points={`${W * 0.37 - 8},${WT} ${W * 0.37 + 8},${WT} ${W * 0.37 + 46},${SY} ${W * 0.37 - 46},${SY}`} fill="white" opacity={0.03} />
+      <polygon points={`${W * 0.68 - 5},${WT} ${W * 0.68 + 5},${WT} ${W * 0.68 + 26},${SY} ${W * 0.68 - 26},${SY}`} fill="white" opacity={0.025} />
+
+      {/* Plants */}
+      {plantXs.map(px => (
+        <g key={px}>
+          <line x1={px} y1={SY} x2={px} y2={SY - 44} stroke="var(--green)" strokeWidth={1.2} opacity={0.45} />
+          <path d={`M ${px},${SY - 18} C ${px - 15},${SY - 26} ${px - 16},${SY - 42} ${px - 3},${SY - 38} C ${px - 6},${SY - 27} ${px - 4},${SY - 18} ${px},${SY - 18}`} fill="var(--green)" opacity={0.42} />
+          <path d={`M ${px},${SY - 18} C ${px + 15},${SY - 26} ${px + 16},${SY - 42} ${px + 3},${SY - 38} C ${px + 6},${SY - 27} ${px + 4},${SY - 18} ${px},${SY - 18}`} fill="var(--green)" opacity={0.42} />
+          <path d={`M ${px},${SY - 32} C ${px - 12},${SY - 40} ${px - 9},${SY - 56} ${px},${SY - 52} C ${px + 9},${SY - 56} ${px + 12},${SY - 40} ${px},${SY - 32}`} fill="var(--green)" opacity={0.48} />
+        </g>
+      ))}
+
+      {/* Substrate */}
+      <path
+        d={`M 2,${SY} Q 80,${SY - 3} 160,${SY + 2} Q 240,${SY - 1} 320,${SY + 2} Q 400,${SY - 4} ${W - 2},${SY} L ${W - 2},${BY} L 2,${BY} Z`}
+        fill="var(--tag-bg)" stroke="var(--border)" strokeWidth={0.5}
+      />
+      {[35, 65, 95, 125, 155, 185, 215, 245, 275, 305, 335, 365, 395, 425, 455].map(gx => (
+        <ellipse key={`g1-${gx}`} cx={gx} cy={SY + 7}  rx={4.5} ry={2.8} fill="var(--border)" opacity={0.45} />
+      ))}
+      {[50, 80, 110, 140, 170, 200, 230, 260, 290, 320, 350, 380, 410, 440].map(gx => (
+        <ellipse key={`g2-${gx}`} cx={gx} cy={SY + 14} rx={3.5} ry={2.0} fill="var(--border)" opacity={0.30} />
+      ))}
+
+      {/* Fish — position updated by animation loop; tail wags via SMIL */}
+      {fishDefs.map((f, i) => {
+        const bw = 34 * f.s, bh = 16 * f.s
+        const eyeX = bw * 0.78, eyeR = 2.2 * f.s
+        const tx = 13 * f.s, ty = 11 * f.s
+        const wagDur = `${(1.1 + i * 0.07).toFixed(2)}s`
+        return (
+          <g key={i} ref={el => { groupRefs.current[i] = el }} transform={`translate(${f.homeX - bw / 2}, ${f.homeY})`}>
+            <g>
+              <path d={`M 0,0 L ${-tx},${-ty} L ${-tx},${ty} Z`} fill="var(--blue)" opacity={0.30} />
+              <animateTransform attributeName="transform" type="rotate" values={`0 0 0;9 0 0;0 0 0;-9 0 0;0 0 0`} dur={wagDur} repeatCount="indefinite" />
+            </g>
+            <path d={`M ${bw*0.28},-${bh*0.50} C ${bw*0.40},-${bh*0.92} ${bw*0.62},-${bh*0.92} ${bw*0.66},-${bh*0.50}`} fill="none" stroke="var(--blue)" strokeWidth={0.7} opacity={0.28} />
+            <path d={`M 0,0 C ${bw*0.28},-${bh*0.58} ${bw*0.76},-${bh*0.52} ${bw},0 C ${bw*0.76},${bh*0.52} ${bw*0.28},${bh*0.58} 0,0 Z`} fill="var(--blue)" opacity={0.46} />
+            <circle cx={eyeX}       cy={-bh * 0.08} r={eyeR}        fill="var(--surface)" opacity={0.75} />
+            <circle cx={eyeX + 0.4} cy={-bh * 0.08} r={eyeR * 0.5} fill="var(--text)"    opacity={0.35} />
+          </g>
+        )
+      })}
+
+      {/* Bubbles — rise from substrate, drift sideways, grow and fade */}
+      {bubbles.map((b, i) => (
+        <circle key={i} cx={b.x} cy={SY - 4} r={b.r} fill="none" stroke="var(--blue)" strokeWidth={0.7} opacity={0}>
+          <animate attributeName="cy"      from={SY - 4} to={WT + 8} dur={`${b.dur}s`} begin={`${b.delay}s`} repeatCount="indefinite" />
+          <animate attributeName="cx"      values={`${b.x};${b.x + b.drift};${b.x};${b.x - b.drift};${b.x}`} dur={`${b.dur}s`} begin={`${b.delay}s`} repeatCount="indefinite" />
+          <animate attributeName="r"       from={b.r * 0.6} to={b.r * 1.6} dur={`${b.dur}s`} begin={`${b.delay}s`} repeatCount="indefinite" />
+          <animate attributeName="opacity" values="0;0;0.26;0.22;0" keyTimes="0;0.06;0.18;0.80;1" dur={`${b.dur}s`} begin={`${b.delay}s`} repeatCount="indefinite" />
+        </circle>
+      ))}
+
+      {/* Food particles — sink toward substrate on click */}
+      {foodDrop && [-7, -3, 0, 3, 7].map((ox, j) => (
+        <circle key={`fp-${foodDrop.key}-${j}`} cx={foodDrop.x + ox} cy={foodDrop.y} r={1.8} fill="var(--amber)" opacity={0}>
+          <animate attributeName="cy"      from={foodDrop.y} to={Math.min(SY - 6, foodDrop.y + 32)} dur="2.2s" fill="freeze" />
+          <animate attributeName="opacity" values="0;0.9;0.85;0" keyTimes="0;0.07;0.62;1" dur="2.2s" begin={`${j * 0.07}s`} fill="freeze" />
+        </circle>
+      ))}
+
+      {/* Surface ripple */}
+      <path d={`M 4,${WT+5} Q 80,${WT+2} 160,${WT+5} Q 240,${WT+8} 320,${WT+5} Q 400,${WT+2} ${W-4},${WT+5}`} fill="none" stroke="var(--blue)" strokeWidth={0.8} opacity={0.16} />
+
+      {/* Glass frame */}
+      <rect x={1.5} y={1.5} width={W-3} height={H-3} fill="none" stroke="var(--border)" strokeWidth={1.5} rx={GR} />
+      <rect x={3.5} y={3.5} width={W-7} height={H-7} fill="none" stroke="white" strokeWidth={0.5} rx={GR-1} opacity={0.1} />
+    </svg>
+  )
+}
+
 export default function TankDetail() {
   const { id } = useParams<{ id: string }>()
   const [tab, setTab] = useState<Tab>('fish')
