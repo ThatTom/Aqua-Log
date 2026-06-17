@@ -1,0 +1,39 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: aquabase
+      POSTGRES_USER: ${DB_USER:-aquabase}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-changeme}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-aquabase}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${DB_USER:-aquabase}:${DB_PASSWORD:-changeme}@db/aquabase
+      SPECIES_DATA_PATH: /app/species-data
+    volumes:
+      - ./species-data:/app/species-data
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    depends_on: [backend]
+    ports:
+      - "3000:3000"
+
+volumes:
+  postgres_data:
