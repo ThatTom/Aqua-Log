@@ -3,6 +3,7 @@ name: Build and publish Docker images
 on:
   push:
     branches: [main]
+    tags: ["v*.*.*"]
   workflow_dispatch:
 
 env:
@@ -41,7 +42,14 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.OWNER }}/aqua-log-${{ matrix.service }}
           tags: |
-            type=raw,value=latest,enable={{is_default_branch}}
+            # branch pushes → edge tag (not latest, so latest always means a real release)
+            type=raw,value=edge,enable={{is_default_branch}}
+            # git tag v1.2.3 → 1.2.3, 1.2, 1, latest
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}},enable=${{ !startsWith(github.ref, 'refs/tags/v0.') }}
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/') }}
+            # always include the short SHA for traceability
             type=sha,prefix=sha-
 
       - name: Build and push
