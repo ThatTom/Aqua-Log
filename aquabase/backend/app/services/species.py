@@ -38,6 +38,19 @@ class SpeciesService:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(contents)
 
+    def delete_yaml_for_slug(self, slug: str) -> bool:
+        """Delete the YAML file for the given slug, using the current index to find its type."""
+        current = self._index.get(slug)
+        if not current:
+            return False
+        type_ = current.get("type", "")
+        subfolder = {"fish": "fish", "plant": "plants", "invertebrate": "invertebrates", "amphibian": "amphibians"}.get(type_, type_)
+        path = self._data_path / subfolder / f"{slug}.yaml"
+        if path.exists():
+            path.unlink()
+            return True
+        return False
+
     def count(self) -> int:
         return len(self._index)
 

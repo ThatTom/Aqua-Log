@@ -33,6 +33,99 @@ def _parse_and_save(contents: bytes) -> dict:
     return {"ok": True, "slug": data["slug"], "common_name": data["common_name"], "type": species_type}
 
 
+# ── Pydantic schemas for JSON-based create/update ────────────────────────────
+
+class RangeIn(BaseModel):
+    min: float | None = None
+    max: float | None = None
+
+
+class CareIn(BaseModel):
+    difficulty: str | None = None
+    min_tank_litres: int | None = None
+    shoal_min: int | None = None
+    group_min: int | None = None
+    max_size_cm: float | None = None
+    lifespan_years: float | None = None
+    growth_rate: str | None = None
+
+
+class WaterIn(BaseModel):
+    temp_c: RangeIn | None = None
+    ph: RangeIn | None = None
+    gh_dgh: RangeIn | None = None
+    kh_dkh: RangeIn | None = None
+
+
+class CompatibilityIn(BaseModel):
+    temperament: str | None = None
+
+
+class LightIn(BaseModel):
+    requirement: str | None = None
+
+
+class SpeciesBody(BaseModel):
+    slug: str
+    common_name: str
+    latin_name: str
+    type: str
+    family: str | None = None
+    origin: str | None = None
+    care: CareIn | None = None
+    water: WaterIn | None = None
+    compatibility: CompatibilityIn | None = None
+    light: LightIn | None = None
+    co2_required: bool | None = None
+    notes: str | None = None
+
+
+def _build_species_dict(body: SpeciesBody) -> dict:
+    data: dict = {
+        "slug": body.slug,
+        "common_name": body.common_name,
+        "latin_name": body.latin_name,
+        "type": body.type,
+    }
+    if body.family:
+        data["family"] = body.family
+    if body.origin:
+        data["origin"] = body.origin
+
+    if body.care:
+        care = body.care.model_dump(exclude_none=True)
+        if care:
+            data["care"] = care
+
+    if body.water:
+        water: dict = {}
+        for k, v in body.water.model_dump(exclude_none=True).items():
+            if v and any(vv is not None for vv in v.values()):
+                water[k] = {kk: vv for kk, vv in v.items() if vv is not None}
+        if water:
+            data["water"] = water
+
+    if body.compatibility:
+        compat = body.compatibility.model_dump(exclude_none=True)
+        if compat:
+            data["compatibility"] = compat
+
+    if body.light:
+        light = body.light.model_dump(exclude_none=True)
+        if light:
+            data["light"] = light
+
+    if body.co2_required is not None:
+        data["co2_required"] = body.co2_required
+
+    if body.notes:
+        data["notes"] = body.notes
+
+    return data
+
+
+# ── Routes ───────────────────────────────────────────────────────────────────
+
 @router.get("/")
 def list_species(type: str | None = Query(None), search: str | None = Query(None)):
     results = species_service.all()
@@ -62,7 +155,6 @@ async def upload_species_from_url(body: UrlImportBody):
     if not url.startswith(("http://", "https://")):
         raise HTTPException(status_code=400, detail="URL must start with http:// or https://")
 
-    # Convert GitHub blob URLs to raw URLs automatically
     if "github.com" in url and "/blob/" in url:
         url = url.replace("github.com", "raw.githubusercontent.com").replace("/blob/", "/")
 
@@ -76,3 +168,30 @@ async def upload_species_from_url(body: UrlImportBody):
         raise HTTPException(status_code=400, detail=f"Failed to fetch URL: {e}")
 
     return _parse_and_save(contents)
+
+
+@router.post("/create")
+def create_species(body: SpeciesBody):
+    if body.type not in VALID_TYPES:
+        raise HTTPException(400, f"type must be one of: {', '.join(sorted(VALID_TYPES))}")
+    if not body.slug.strip() or not body.common_name.strip() or not body.latin_name.strip():
+        raise HTTPException(400, "slug, common_name, and latin_name are required")
+    data = _build_species_dict(body)
+    contents = yaml.dump(data, allow_unicode=True, sort_keys=False, default_flow_style=False).encode()
+    species_service.save_yaml(body.slug, body.type, contents)
+    species_service.load()
+    return {"ok": True, "slug": body.slug, "common_name": body.common_name, "type": body.type}
+
+
+@router.put("/{slug}")
+def update_species(slug: str, body: SpeciesBody):
+    if not species_service.validate_slug(slug):
+        raise HTTPException(404, f"Species not found: {slug}")
+    if body.type not in VALID_TYPES:
+        raise HTTPException(400, f"type must be one of: {', '.join(sorted(VALID_TYPES))}")
+    species_service.delete_yaml_for_slug(slug)
+    data = _build_species_dict(body)
+    contents = yaml.dump(data, allow_unicode=True, sort_keys=False, default_flow_style=False).encode()
+    species_service.save_yaml(body.slug, body.type, contents)
+    species_service.load()
+    return {"ok": True, "slug": body.slug, "common_name": body.common_name, "type": body.type}

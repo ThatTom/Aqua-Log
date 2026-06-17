@@ -85,6 +85,34 @@ export interface JournalEntry {
   species_slug: string | null
 }
 
+export interface SpeciesBody {
+  slug: string
+  common_name: string
+  latin_name: string
+  type: string
+  family?: string
+  origin?: string
+  care?: {
+    difficulty?: string
+    min_tank_litres?: number
+    shoal_min?: number
+    group_min?: number
+    max_size_cm?: number
+    lifespan_years?: number
+    growth_rate?: string
+  }
+  water?: {
+    temp_c?: { min?: number; max?: number }
+    ph?: { min?: number; max?: number }
+    gh_dgh?: { min?: number; max?: number }
+    kh_dkh?: { min?: number; max?: number }
+  }
+  compatibility?: { temperament?: string }
+  light?: { requirement?: string }
+  co2_required?: boolean
+  notes?: string
+}
+
 export interface Alert {
   id: string
   tank_id: string
@@ -113,6 +141,16 @@ async function post<T>(path: string, body: unknown): Promise<T> {
     body: JSON.stringify(body),
   })
   if (!res.ok) throw new Error(`POST ${path} failed: ${res.status}`)
+  return res.json()
+}
+
+async function put<T>(path: string, body: unknown): Promise<T> {
+  const res = await fetch(`${BASE}${path}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) throw new Error(`PUT ${path} failed: ${res.status}`)
   return res.json()
 }
 
@@ -204,6 +242,10 @@ export const api = {
     delete: (tankId: string, entryId: string) => del(`/tanks/${tankId}/journal/${entryId}`),
   },
   species: {
+    create: (body: SpeciesBody) =>
+      post<{ ok: boolean; slug: string; common_name: string; type: string }>('/species/create', body),
+    update: (slug: string, body: SpeciesBody) =>
+      put<{ ok: boolean; slug: string; common_name: string; type: string }>(`/species/${slug}`, body),
     upload: async (file: File): Promise<{ ok: boolean; slug: string; common_name: string; type: string }> => {
       const fd = new FormData()
       fd.append('file', file)
