@@ -1,6 +1,14 @@
 import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom'
 import { LayoutDashboard, BookOpen, Cog, PencilRuler, NotebookPen, ShieldCheck, type LucideIcon } from 'lucide-react'
 
+function GitHubIcon({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.44 9.8 8.21 11.39.6.11.82-.26.82-.58v-2.23c-3.34.73-4.03-1.42-4.03-1.42-.55-1.39-1.34-1.76-1.34-1.76-1.09-.74.08-.73.08-.73 1.2.08 1.84 1.24 1.84 1.24 1.07 1.83 2.81 1.3 3.49 1 .11-.78.42-1.31.76-1.61-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.12-.3-.54-1.52.12-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 3-.4c1.02 0 2.05.14 3 .4 2.29-1.55 3.3-1.23 3.3-1.23.66 1.66.24 2.88.12 3.18.77.84 1.24 1.91 1.24 3.22 0 4.61-2.81 5.63-5.48 5.92.43.37.82 1.1.82 2.22v3.29c0 .32.19.69.8.58C20.56 21.8 24 17.3 24 12c0-6.63-5.37-12-12-12z" />
+    </svg>
+  )
+}
+
 function AquaDropIcon({ size = 26 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
@@ -55,7 +63,7 @@ function Nav() {
       </span>
       {link('/', 'Dashboard', LayoutDashboard)}
       {link('/designer', 'Designer', PencilRuler)}
-      {link('/species', 'Species browser', BookOpen)}
+      {link('/species', 'Species', BookOpen)}
       {link('/compatibility', 'Compatibility', ShieldCheck)}
       {link('/journal', 'Journal', NotebookPen)}
       <span style={{ flex: 1 }} />
@@ -81,13 +89,52 @@ function Nav() {
   )
 }
 
+function Footer() {
+  return (
+    <footer style={{
+      borderTop: '0.5px solid var(--border)',
+      background: 'var(--surface)',
+      padding: '14px 24px',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 16,
+    }}>
+      <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <AquaDropIcon size={18} />
+        <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', letterSpacing: '0.04em' }}>AQUA LOG</span>
+        <span style={{ fontSize: 12, color: 'var(--text-2)' }}>© {new Date().getFullYear()}</span>
+      </span>
+      <a
+        href="https://github.com/ThatTom/Aqua-Log"
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{
+          display: 'flex', alignItems: 'center', gap: 6,
+          fontSize: 12, color: 'var(--text-2)', textDecoration: 'none',
+          padding: '5px 12px', borderRadius: 8,
+          border: '0.5px solid var(--border)',
+          background: 'transparent',
+          cursor: 'pointer',
+          transition: 'color 0.15s, border-color 0.15s',
+        }}
+        onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.color = 'var(--blue)'; (e.currentTarget as HTMLAnchorElement).style.borderColor = 'var(--blue-border)' }}
+        onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.color = 'var(--text-2)'; (e.currentTarget as HTMLAnchorElement).style.borderColor = 'var(--border)' }}
+      >
+        <GitHubIcon size={14} />
+        GitHub
+      </a>
+    </footer>
+  )
+}
+
 export default function App() {
   return (
     <SettingsProvider>
       <BrowserRouter>
-        <div style={{ minHeight: '100vh', background: 'var(--bg)', fontFamily: 'system-ui, sans-serif' }}>
+        <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--bg)', fontFamily: 'system-ui, sans-serif' }}>
           <Nav />
-          <div style={{ maxWidth: 960, margin: '0 auto', padding: '32px 24px' }}>
+          <div style={{ flex: 1, maxWidth: 960, width: '100%', margin: '0 auto', padding: '32px 24px' }}>
             <Routes>
               <Route path="/" element={<Dashboard />} />
               <Route path="/tanks/:id" element={<TankDetail />} />
@@ -98,6 +145,7 @@ export default function App() {
               <Route path="/settings" element={<Settings />} />
             </Routes>
           </div>
+          <Footer />
         </div>
       </BrowserRouter>
     </SettingsProvider>
