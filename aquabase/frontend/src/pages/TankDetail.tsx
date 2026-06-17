@@ -34,6 +34,12 @@ const HEALTH_COLORS: Record<string, { bg: string; color: string }> = {
   deceased:   { bg: 'var(--red-bg)',    color: 'var(--red)'    },
 }
 
+const PLANT_STATUS_COLORS: Record<string, { bg: string; color: string }> = {
+  planned: { bg: 'var(--blue-bg)',  color: 'var(--blue)'  },
+  planted: { bg: 'var(--green-bg)', color: 'var(--green)' },
+  removed: { bg: 'var(--tag-bg)',   color: 'var(--text-2)' },
+}
+
 // --- Species autocomplete ---
 function SpeciesAutocomplete({ type, value, onChange }: {
   type: 'fish' | 'plant'
@@ -211,6 +217,12 @@ export default function TankDetail() {
   const [plantSlug, setPlantSlug] = useState('')
   const [plantName, setPlantName] = useState('')
   const [plantQty, setPlantQty] = useState('1')
+  const [plantAddStatus, setPlantAddStatus] = useState('planted')
+
+  const [editingPlantId, setEditingPlantId] = useState<string | null>(null)
+  const [editPlantQty, setEditPlantQty] = useState('')
+  const [editPlantStatus, setEditPlantStatus] = useState('')
+  const [editPlantNotes, setEditPlantNotes] = useState('')
 
   const [ph, setPh] = useState('')
   const [temp, setTemp] = useState('')
@@ -357,6 +369,14 @@ export default function TankDetail() {
             {tank.filter_flow_lph ? ` · ${tank.filter_flow_lph} L/h filter` : ''}
           </p>
         </div>
+      </div>
+
+      <div style={{ marginBottom: 20 }}>
+        <TankGraphic
+          fishCount={(fish.data ?? []).reduce((s, f) => s + f.quantity, 0)}
+          plantCount={(plants.data ?? []).reduce((s, p) => s + p.quantity, 0)}
+          co2={tank.co2_injection}
+        />
       </div>
 
       {unackAlerts.length > 0 && (
@@ -517,30 +537,112 @@ export default function TankDetail() {
         <Card>
           <SectionTitle>Plants</SectionTitle>
           {plants.data?.length === 0 && <p style={{ fontSize: 13, color: 'var(--text-2)' }}>No plants added yet.</p>}
-          {plants.data?.map(p => (
-            <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '0.5px solid var(--border-sub)' }}>
-              <span style={{ fontSize: 13, color: 'var(--text)', fontWeight: 500 }}>{p.species_slug} <span style={{ color: 'var(--text-2)', fontWeight: 400 }}>×{p.quantity}</span></span>
-              <button onClick={async () => { await api.plants.remove(id!, p.id); plants.reload() }} style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 11, color: 'var(--red)', background: 'none', border: 'none', cursor: 'pointer' }}><Trash2 size={11} />Remove</button>
-            </div>
-          ))}
+          {plants.data?.map(p => {
+            const sc = PLANT_STATUS_COLORS[p.plant_status] ?? PLANT_STATUS_COLORS.planted
+            const isEditing = editingPlantId === p.id
+            return (
+              <div key={p.id} style={{ borderBottom: '0.5px solid var(--border-sub)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0' }}>
+                  <div>
+                    <span style={{ fontSize: 13, color: 'var(--text)', fontWeight: 500 }}>
+                      {p.common_name ?? p.species_slug}
+                    </span>
+                    <span style={{ fontSize: 12, color: 'var(--text-2)', marginLeft: 8 }}>×{p.quantity}</span>
+                    {p.latin_name && (
+                      <p style={{ margin: '1px 0 0', fontSize: 11, color: 'var(--text-3)', fontStyle: 'italic' }}>{p.latin_name}</p>
+                    )}
+                    {p.notes && (
+                      <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--text-2)' }}>{p.notes}</p>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
+                    <Tag bg={sc.bg} color={sc.color}>{p.plant_status}</Tag>
+                    <button
+                      onClick={() => {
+                        if (isEditing) { setEditingPlantId(null); return }
+                        setEditingPlantId(p.id)
+                        setEditPlantQty(String(p.quantity))
+                        setEditPlantStatus(p.plant_status)
+                        setEditPlantNotes(p.notes ?? '')
+                      }}
+                      style={{ fontSize: 11, color: 'var(--text-2)', background: 'none', border: '0.5px solid var(--btn-border)', borderRadius: 6, padding: '2px 8px', cursor: 'pointer' }}
+                    >
+                      {isEditing ? 'Cancel' : 'Edit'}
+                    </button>
+                    <button
+                      onClick={async () => { await api.plants.remove(id!, p.id); plants.reload() }}
+                      style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 11, color: 'var(--red)', background: 'none', border: 'none', cursor: 'pointer' }}
+                    >
+                      <Trash2 size={11} />Remove
+                    </button>
+                  </div>
+                </div>
+                {isEditing && (
+                  <div style={{ background: 'var(--surface-2)', borderRadius: 8, padding: '12px 14px', marginBottom: 10 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr', gap: 10, marginBottom: 10 }}>
+                      <div>
+                        <FieldLabel>Quantity</FieldLabel>
+                        <input type="number" min="1" value={editPlantQty} onChange={e => setEditPlantQty(e.target.value)} style={{ width: '100%', boxSizing: 'border-box' }} />
+                      </div>
+                      <div>
+                        <FieldLabel>Status</FieldLabel>
+                        <select value={editPlantStatus} onChange={e => setEditPlantStatus(e.target.value)} style={{ width: '100%' }}>
+                          <option value="planned">Planned</option>
+                          <option value="planted">Planted</option>
+                          <option value="removed">Removed</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div style={{ marginBottom: 10 }}>
+                      <FieldLabel>Notes</FieldLabel>
+                      <input value={editPlantNotes} onChange={e => setEditPlantNotes(e.target.value)} placeholder="Optional notes…" style={{ width: '100%', boxSizing: 'border-box' }} />
+                    </div>
+                    <button
+                      onClick={async () => {
+                        await api.plants.update(id!, p.id, {
+                          quantity: Number(editPlantQty),
+                          plant_status: editPlantStatus,
+                          notes: editPlantNotes || null,
+                        })
+                        setEditingPlantId(null)
+                        plants.reload()
+                      }}
+                      style={{ padding: '6px 16px', borderRadius: 8, border: '0.5px solid var(--green-border)', background: 'var(--green-bg)', color: 'var(--green)', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}
+                    >
+                      Save
+                    </button>
+                  </div>
+                )}
+              </div>
+            )
+          })}
           <div style={{ marginTop: 16, borderTop: '0.5px solid var(--border-sub)', paddingTop: 14 }}>
             <p style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 500, color: 'var(--text-label)', margin: '0 0 8px' }}>
               <Plus size={12} />Add plant
             </p>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-              <SpeciesAutocomplete type="plant" value={plantName} onChange={(slug, name) => { setPlantSlug(slug); setPlantName(name) }} />
+            <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+              <div style={{ flex: 1 }}>
+                <FieldLabel>Species</FieldLabel>
+                <SpeciesAutocomplete type="plant" value={plantName} onChange={(slug, name) => { setPlantSlug(slug); setPlantName(name) }} />
+              </div>
+              <div>
+                <FieldLabel>Status</FieldLabel>
+                <select value={plantAddStatus} onChange={e => setPlantAddStatus(e.target.value)}>
+                  <option value="planned">Planned</option>
+                  <option value="planted">Planted</option>
+                  <option value="removed">Removed</option>
+                </select>
+              </div>
               <div>
                 <FieldLabel>Qty</FieldLabel>
                 <input type="number" value={plantQty} onChange={e => setPlantQty(e.target.value)} style={{ width: 60 }} min="1" />
               </div>
-              <div style={{ paddingTop: 16 }}>
-                <button onClick={async () => {
-                  if (!plantSlug) return
-                  await api.plants.add(id!, { species_slug: plantSlug, quantity: Number(plantQty), notes: null })
-                  setPlantSlug(''); setPlantName(''); setPlantQty('1')
-                  plants.reload()
-                }}>Add</button>
-              </div>
+              <button onClick={async () => {
+                if (!plantSlug) return
+                await api.plants.add(id!, { species_slug: plantSlug, quantity: Number(plantQty), notes: null, plant_status: plantAddStatus })
+                setPlantSlug(''); setPlantName(''); setPlantQty('1'); setPlantAddStatus('planted')
+                plants.reload()
+              }}>Add</button>
             </div>
           </div>
         </Card>

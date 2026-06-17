@@ -53,12 +53,25 @@ class TankPlantCreate(BaseModel):
     species_slug: str
     quantity: int
     notes: str | None = None
+    plant_status: str = "planted"
 
 
-class TankPlantOut(TankPlantCreate):
+class TankPlantUpdate(BaseModel):
+    quantity: int | None = None
+    notes: str | None = None
+    plant_status: str | None = None
+
+
+class TankPlantOut(BaseModel):
     id: str
     tank_id: str
+    species_slug: str
+    quantity: int
+    plant_status: str
     added_at: datetime
+    notes: str | None = None
+    common_name: str | None = None
+    latin_name: str | None = None
     model_config = {"from_attributes": True}
 
 

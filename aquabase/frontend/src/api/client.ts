@@ -32,8 +32,11 @@ export interface TankPlant {
   tank_id: string
   species_slug: string
   quantity: number
+  plant_status: string
   added_at: string
   notes: string | null
+  common_name: string | null
+  latin_name: string | null
 }
 
 export interface WaterParameter {
@@ -147,8 +150,10 @@ export const api = {
   },
   plants: {
     list: (tankId: string) => get<TankPlant[]>(`/plants/${tankId}/plants`),
-    add: (tankId: string, body: Pick<TankPlant, 'species_slug' | 'quantity' | 'notes'>) =>
+    add: (tankId: string, body: Pick<TankPlant, 'species_slug' | 'quantity' | 'notes' | 'plant_status'>) =>
       post<TankPlant>(`/plants/${tankId}/plants`, body),
+    update: (tankId: string, plantId: string, body: { quantity?: number; plant_status?: string; notes?: string | null }) =>
+      patch<TankPlant>(`/plants/${tankId}/plants/${plantId}`, body),
     remove: (tankId: string, plantId: string) => del(`/plants/${tankId}/plants/${plantId}`),
   },
   parameters: {
