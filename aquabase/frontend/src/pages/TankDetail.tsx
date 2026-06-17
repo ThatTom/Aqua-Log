@@ -718,20 +718,21 @@ export default function TankDetail() {
             <p style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 500, color: 'var(--text-label)', margin: '0 0 8px' }}>
               <Plus size={12} />Add fish
             </p>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-              <SpeciesAutocomplete type="fish" value={fishName} onChange={(slug, name) => { setFishSlug(slug); setFishName(name) }} />
+            <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+              <div style={{ flex: 1 }}>
+                <FieldLabel>Species</FieldLabel>
+                <SpeciesAutocomplete type="fish" value={fishName} onChange={(slug, name) => { setFishSlug(slug); setFishName(name) }} />
+              </div>
               <div>
                 <FieldLabel>Qty</FieldLabel>
                 <input type="number" value={fishQty} onChange={e => setFishQty(e.target.value)} style={{ width: 60 }} min="1" />
               </div>
-              <div style={{ paddingTop: 16 }}>
-                <button onClick={async () => {
-                  if (!fishSlug) return
-                  await api.fish.add(id!, { species_slug: fishSlug, quantity: Number(fishQty), notes: null })
-                  setFishSlug(''); setFishName(''); setFishQty('1')
-                  fish.reload()
-                }}>Add</button>
-              </div>
+              <button onClick={async () => {
+                if (!fishSlug) return
+                await api.fish.add(id!, { species_slug: fishSlug, quantity: Number(fishQty), notes: null })
+                setFishSlug(''); setFishName(''); setFishQty('1')
+                fish.reload()
+              }}>Add</button>
             </div>
             <CompatibilityCheck tankId={id!} slug={fishSlug} />
           </div>
@@ -859,7 +860,7 @@ export default function TankDetail() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <Card>
             <SectionTitle>Log parameters</SectionTitle>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', gap: 10 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 10 }}>
               {([['pH', ph, setPh], ['Temp (°C)', temp, setTemp], ['Ammonia', ammonia, setAmmonia], ['Nitrite', nitrite, setNitrite], ['Nitrate', nitrate, setNitrate], ['GH (dGH)', gh, setGh], ['KH (dKH)', kh, setKh]] as [string, string, (v: string) => void][]).map(([lbl, val, set]) => (
                 <div key={lbl}>
                   <FieldLabel>{lbl}</FieldLabel>
@@ -867,20 +868,29 @@ export default function TankDetail() {
                 </div>
               ))}
             </div>
-            <button style={{ marginTop: 12 }} onClick={async () => {
-              await api.parameters.log(id!, {
-                ph: ph ? Number(ph) : null,
-                temperature_c: temp ? Number(temp) : null,
-                ammonia_ppm: ammonia ? Number(ammonia) : null,
-                nitrite_ppm: nitrite ? Number(nitrite) : null,
-                nitrate_ppm: nitrate ? Number(nitrate) : null,
-                gh_dgh: gh ? Number(gh) : null,
-                kh_dkh: kh ? Number(kh) : null,
-                notes: null,
-              })
-              setPh(''); setTemp(''); setAmmonia(''); setNitrite(''); setNitrate(''); setGh(''); setKh('')
-              params.reload(); alerts.reload()
-            }}>Save reading</button>
+            <button
+              style={{
+                marginTop: 12, padding: '7px 18px', borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: 'pointer',
+                border: '0.5px solid var(--blue-border)', background: 'var(--blue-bg)', color: 'var(--blue)',
+                transition: 'background 0.15s, color 0.15s',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'var(--blue)'; e.currentTarget.style.color = '#fff' }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'var(--blue-bg)'; e.currentTarget.style.color = 'var(--blue)' }}
+              onClick={async () => {
+                await api.parameters.log(id!, {
+                  ph: ph ? Number(ph) : null,
+                  temperature_c: temp ? Number(temp) : null,
+                  ammonia_ppm: ammonia ? Number(ammonia) : null,
+                  nitrite_ppm: nitrite ? Number(nitrite) : null,
+                  nitrate_ppm: nitrate ? Number(nitrate) : null,
+                  gh_dgh: gh ? Number(gh) : null,
+                  kh_dkh: kh ? Number(kh) : null,
+                  notes: null,
+                })
+                setPh(''); setTemp(''); setAmmonia(''); setNitrite(''); setNitrate(''); setGh(''); setKh('')
+                params.reload(); alerts.reload()
+              }}
+            >Save reading</button>
           </Card>
 
           {chartData.length > 0 && (
