@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Save, Eraser } from 'lucide-react'
 import { useTanks, usePlants } from '../hooks'
 import { Card, ConfirmDialog } from '../components/ui'
+import { useSettings } from '../context/SettingsContext'
 
 interface PaletteItem {
   type: 'plant' | 'hardscape'
@@ -35,6 +36,7 @@ const MAX_W = 740
 
 export default function TankDesigner() {
   const { data: tanks, loading: tanksLoading } = useTanks()
+  const { defaultTank } = useSettings()
   const [tankId, setTankId] = useState('')
   const [cells, setCells] = useState<Record<string, CellData>>({})
   const [activeItem, setActiveItem] = useState<PaletteItem | null>(null)
@@ -63,6 +65,13 @@ export default function TankDesigner() {
     label: speciesMap[p.species_slug] ?? p.species_slug.replace(/-/g, ' '),
     color: PLANT_COLORS[i % PLANT_COLORS.length],
   }))
+
+  // Auto-select default tank (or first tank) once list is loaded
+  useEffect(() => {
+    if (!tanks || tanks.length === 0 || tankId) return
+    const preferred = defaultTank && tanks.find(t => t.id === defaultTank)
+    setTankId(preferred ? preferred.id : tanks[0].id)
+  }, [tanks, defaultTank])
 
   // Fetch species common names once for display
   useEffect(() => {

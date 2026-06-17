@@ -1,8 +1,8 @@
-import { useState, useRef } from 'react'
-import { CalendarDays, Ruler, Info, Download, Upload } from 'lucide-react'
+import { useState, useRef, useEffect } from 'react'
+import { CalendarDays, Ruler, Info, Download, Upload, Droplets } from 'lucide-react'
 import { useSettings, formatDate, DateFormat, UnitSystem } from '../context/SettingsContext'
 import { Card } from '../components/ui'
-import { api } from '../api/client'
+import { api, Tank } from '../api/client'
 
 const FORMAT_OPTIONS: { value: DateFormat; label: string }[] = [
   { value: 'DD/MM/YYYY', label: 'DD/MM/YYYY (UK / Europe)' },
@@ -17,7 +17,12 @@ const UNIT_OPTIONS: { value: UnitSystem; label: string; example: string }[] = [
 ]
 
 export default function Settings() {
-  const { dateFormat, setDateFormat, unitSystem, setUnitSystem, loading } = useSettings()
+  const { dateFormat, setDateFormat, unitSystem, setUnitSystem, defaultTank, setDefaultTank, loading } = useSettings()
+  const [tanks, setTanks] = useState<Tank[]>([])
+
+  useEffect(() => {
+    api.tanks.list().then(setTanks)
+  }, [])
 
   const [exporting, setExporting] = useState(false)
   const [importing, setImporting] = useState(false)
@@ -260,6 +265,23 @@ export default function Settings() {
               </div>
             )}
           </div>
+        </Card>
+
+        <Card>
+          <p style={{ fontWeight: 500, fontSize: 14, margin: '0 0 4px', color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 6 }}><Droplets size={14} color="var(--text-2)" />Default tank</p>
+          <p style={{ fontSize: 12, color: 'var(--text-2)', margin: '0 0 14px' }}>
+            Pre-selects this tank on pages with a tank dropdown, like the Livestock Journal.
+          </p>
+          <select
+            value={defaultTank ?? ''}
+            onChange={e => setDefaultTank(e.target.value || null)}
+            style={{ width: '100%' }}
+          >
+            <option value="">No default</option>
+            {tanks.map(t => (
+              <option key={t.id} value={t.id}>{t.name}</option>
+            ))}
+          </select>
         </Card>
 
         <Card>

@@ -23,7 +23,7 @@ function EventBadge({ type }: { type: string }) {
 }
 
 export default function LivestockJournal() {
-  const { dateFormat } = useSettings()
+  const { dateFormat, defaultTank } = useSettings()
   const [tanks, setTanks] = useState<Tank[]>([])
   const [selectedTank, setSelectedTank] = useState<string>('')
   const [entries, setEntries] = useState<JournalEntry[]>([])
@@ -42,8 +42,14 @@ export default function LivestockJournal() {
   const [saveError, setSaveError] = useState<string | null>(null)
 
   useEffect(() => {
-    api.tanks.list().then(setTanks)
-  }, [])
+    api.tanks.list().then(list => {
+      setTanks(list)
+      if (list.length > 0) {
+        const preferred = defaultTank && list.find(t => t.id === defaultTank)
+        setSelectedTank(preferred ? preferred.id : list[0].id)
+      }
+    })
+  }, [defaultTank])
 
   useEffect(() => {
     if (!selectedTank) { setEntries([]); setFishList([]); return }

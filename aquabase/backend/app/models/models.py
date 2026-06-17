@@ -175,4 +175,5 @@ class AppSettings(Base):
     id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: "default")
     date_format: Mapped[str] = mapped_column(String, default="DD/MM/YYYY")
     unit_system: Mapped[str] = mapped_column(String, default="cm")
+    default_tank_id: Mapped[str | None] = mapped_column(String, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

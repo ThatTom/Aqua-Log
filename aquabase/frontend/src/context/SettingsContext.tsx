@@ -9,6 +9,8 @@ interface SettingsContextValue {
   setDateFormat: (f: DateFormat) => Promise<void>
   unitSystem: UnitSystem
   setUnitSystem: (u: UnitSystem) => Promise<void>
+  defaultTank: string | null
+  setDefaultTank: (id: string | null) => Promise<void>
   theme: Theme
   toggleTheme: () => void
   loading: boolean
@@ -19,6 +21,8 @@ const SettingsContext = createContext<SettingsContextValue>({
   setDateFormat: async () => {},
   unitSystem: 'cm',
   setUnitSystem: async () => {},
+  defaultTank: null,
+  setDefaultTank: async () => {},
   theme: 'light',
   toggleTheme: () => {},
   loading: true,
@@ -27,6 +31,7 @@ const SettingsContext = createContext<SettingsContextValue>({
 export function SettingsProvider({ children }: { children: ReactNode }) {
   const [dateFormat, setDateFormatState] = useState<DateFormat>('DD/MM/YYYY')
   const [unitSystem, setUnitSystemState] = useState<UnitSystem>('cm')
+  const [defaultTank, setDefaultTankState] = useState<string | null>(null)
   const [theme, setTheme] = useState<Theme>(
     () => (localStorage.getItem('theme') as Theme) ?? 'light'
   )
@@ -38,6 +43,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       .then(d => {
         setDateFormatState(d.date_format)
         setUnitSystemState(d.unit_system ?? 'cm')
+        setDefaultTankState(d.default_tank_id ?? null)
       })
       .catch(() => {})
       .finally(() => setLoading(false))
@@ -66,12 +72,21 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     })
   }
 
+  async function setDefaultTank(id: string | null) {
+    setDefaultTankState(id)
+    await fetch('/api/settings/', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ default_tank_id: id }),
+    })
+  }
+
   function toggleTheme() {
     setTheme(t => (t === 'light' ? 'dark' : 'light'))
   }
 
   return (
-    <SettingsContext.Provider value={{ dateFormat, setDateFormat, unitSystem, setUnitSystem, theme, toggleTheme, loading }}>
+    <SettingsContext.Provider value={{ dateFormat, setDateFormat, unitSystem, setUnitSystem, defaultTank, setDefaultTank, theme, toggleTheme, loading }}>
       {children}
     </SettingsContext.Provider>
   )
